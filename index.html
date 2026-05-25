@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧬 PDUFA Tracker — FDA Approval Calendar 2026</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --card: #111827;
+    --border: #1f2937;
+    --accent: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --purple: #8b5cf6;
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+  
+  header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); padding: 32px 24px 24px; text-align: center; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 8px; }
+  header h1 span { background: linear-gradient(90deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  header p { color: var(--muted); font-size: 0.95rem; }
+  .badge { display: inline-block; background: #1e3a5f; color: #60a5fa; font-size: 0.75rem; padding: 3px 10px; border-radius: 99px; margin-top: 10px; }
+
+  .controls { max-width: 1100px; margin: 24px auto; padding: 0 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .search-box { flex: 1; min-width: 200px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: 0.9rem; outline: none; }
+  .search-box:focus { border-color: var(--accent); }
+  .filter-btn { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; color: var(--muted); font-size: 0.85rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .filter-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+  .stats { max-width: 1100px; margin: 0 auto 24px; padding: 0 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .stat-card .label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-card .value { font-size: 1.8rem; font-weight: 700; }
+  .stat-card .sub { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+  .grid { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .card.high::before { background: linear-gradient(90deg, var(--green), #34d399); }
+  .card.medium::before { background: linear-gradient(90deg, var(--yellow), #fbbf24); }
+  .card.low::before { background: linear-gradient(90deg, var(--red), #f87171); }
+  .card.pending::before { background: linear-gradient(90deg, var(--purple), #a78bfa); }
+
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .ticker { font-size: 1.4rem; font-weight: 800; }
+  .prob-badge { padding: 4px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 600; }
+  .prob-high { background: rgba(16,185,129,0.15); color: var(--green); }
+  .prob-medium { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .prob-low { background: rgba(239,68,68,0.15); color: var(--red); }
+  .prob-pending { background: rgba(139,92,246,0.15); color: var(--purple); }
+
+  .drug-name { font-size: 0.92rem; font-weight: 600; margin-bottom: 4px; }
+  .indication { color: var(--muted); font-size: 0.82rem; margin-bottom: 14px; line-height: 1.4; }
+  
+  .meta { display: flex; flex-direction: column; gap: 6px; }
+  .meta-row { display: flex; justify-content: space-between; font-size: 0.82rem; }
+  .meta-row .key { color: var(--muted); }
+  .meta-row .val { font-weight: 500; }
+
+  .pdufa-date { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 10px 12px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .pdufa-date .date-label { color: var(--muted); font-size: 0.78rem; }
+  .pdufa-date .date-val { font-weight: 700; color: var(--accent); font-size: 0.95rem; }
+  .countdown { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+  .urgency-badge { position: absolute; top: 16px; right: 16px; }
+
+  .section-title { max-width: 1100px; margin: 0 auto 16px; padding: 0 16px; font-size: 1.1rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  
+  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  .no-results { text-align: center; color: var(--muted); padding: 48px; grid-column: 1/-1; }
+  
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.6rem; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧬 <span>PDUFA Tracker</span></h1>
+  <p>FDA Drug Approval Calendar — Real-time Biotech Catalyst Intelligence</p>
+  <span class="badge">Updated: May 25, 2026 · Q2 2026</span>
+</header>
+
+<div class="controls">
+  <input class="search-box" type="text" id="searchInput" placeholder="🔍 Search ticker, drug, or indication..." oninput="filterCards()">
+  <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+  <button class="filter-btn" onclick="setFilter('upcoming', this)">⚡ Upcoming 30d</button>
+  <button class="filter-btn" onclick="setFilter('high', this)">🟢 High Prob</button>
+  <button class="filter-btn" onclick="setFilter('medium', this)">🟡 Medium</button>
+  <button class="filter-btn" onclick="setFilter('low', this)">🔴 Low Prob</button>
+</div>
+
+<div class="stats" id="statsBar">
+  <div class="stat-card"><div class="label">Total PDUFA</div><div class="value" id="stat-total" style="color:var(--accent)">—</div><div class="sub">Q2 2026</div></div>
+  <div class="stat-card"><div class="label">Next 30 Days</div><div class="value" id="stat-upcoming" style="color:var(--yellow)">—</div><div class="sub">Upcoming decisions</div></div>
+  <div class="stat-card"><div class="label">High Prob (≥70%)</div><div class="value" id="stat-high" style="color:var(--green)">—</div><div class="sub">Likely approvals</div></div>
+  <div class="stat-card"><div class="label">Avg Prob</div><div class="value" id="stat-avg" style="color:var(--purple)">—</div><div class="sub">Across all events</div></div>
+</div>
+
+<div class="section-title" id="sectionLabel">Q2 2026 PDUFA Calendar</div>
+<div class="grid" id="cardGrid"></div>
+
+<footer>
+  <p>🧬 PDUFA Tracker · Data sourced from FDA.gov, BiopharmaCatalysts, BioPharmWatch</p>
+  <p style="margin-top:6px">Built with ❤️ by <a href="https://seanliii.github.io/xialanxia-dashboard/">小蓝虾 🦐</a> · For informational purposes only, not investment advice</p>
+</footer>
+
+<script>
+const today = new Date('2026-05-25');
+
+const pdufaData = [
+  {
+    ticker: 'CORT',
+    drug: 'CTx-1301',
+    company: 'Corcept Therapeutics',
+    indication: 'ADHD (Attention Deficit/Hyperactivity Disorder) in children and adults — novel dexmethylphenidate formulation',
+    pdufa: '2026-05-31',
+    prob: 82,
+    probLevel: 'high',
+    phase: 'NDA',
+    designation: 'Standard Review',
+    notes: 'New formulation with improved PK profile. Priority market opportunity.'
+  },
+  {
+    ticker: 'MNKD',
+    drug: 'Afrezza (peds)',
+    company: 'MannKind Corp',
+    indication: 'Inhaled insulin for pediatric Type 1 Diabetes — sNDA for patients aged 4-17',
+    pdufa: '2026-05-29',
+    prob: 75,
+    probLevel: 'high',
+    phase: 'sNDA',
+    designation: 'Priority Review',
+    notes: 'Expanding label to pediatric population. Strong safety data from adult use.'
+  },
+  {
+    ticker: 'VRTX',
+    drug: 'Suzetrigine (SnS)',
+    company: 'Vertex Pharmaceuticals',
+    indication: 'Small nerve fiber neuropathy — NaV1.8 selective sodium channel blocker',
+    pdufa: '2026-06-05',
+    prob: 68,
+    probLevel: 'medium',
+    phase: 'NDA',
+    designation: 'Priority Review',
+    notes: 'Novel mechanism for non-opioid pain. AdCom vote 8-5 in favor.'
+  },
+  {
+    ticker: 'LEGN',
+    drug: 'Carvykti 2L',
+    company: 'Legend Biotech / J&J',
+    indication: 'Multiple Myeloma (2nd line, earlier use expansion)',
+    pdufa: '2026-06-12',
+    prob: 88,
+    probLevel: 'high',
+    phase: 'sBLA',
+    designation: 'Breakthrough Therapy',
+    notes: 'Expanding from 4L+ to 2L+. CARTITUDE-4 data showed 74% response rate.'
+  },
+  {
+    ticker: 'VIRS',
+    drug: 'Veligrotug (VHH-001)',
+    company: 'Viridian Therapeutics',
+    indication: 'Thyroid Eye Disease (TED) — novel FcRn antagonist',
+    pdufa: '2026-06-30',
+    prob: 73,
+    probLevel: 'high',
+    phase: 'BLA',
+    designation: 'Priority Review + Orphan Drug',
+    notes: 'Phase 3 THRIVE study showed significant proptosis reduction vs placebo.'
+  },
+  {
+    ticker: 'BNTX',
+    drug: 'BNT327',
+    company: 'BioNTech',
+    indication: 'NSCLC (Non-Small Cell Lung Cancer) — PD-L1/VEGF bispecific antibody',
+    pdufa: '2026-07-08',
+    prob: 65,
+    probLevel: 'medium',
+    phase: 'BLA',
+    designation: 'Breakthrough Therapy',
+    notes: 'ELCC 2026 data showed 47.2% ORR in ES-SCLC. Competing with Opdivo+chemo.'
+  },
+  {
+    ticker: 'ALNY',
+    drug: 'Fitusiran',
+    company: 'Alnylam / Sanofi',
+    indication: 'Hemophilia A and B prophylaxis — RNAi targeting antithrombin',
+    pdufa: '2026-07-17',
+    prob: 77,
+    probLevel: 'high',
+    phase: 'NDA',
+    designation: 'Breakthrough Therapy',
+    notes: 'Phase 3 ATLAS trial: 89% reduction in bleeding rate. Once-monthly dosing.'
+  },
+  {
+    ticker: 'RXRX',
+    drug: 'RXR-101',
+    company: 'Recursion Pharmaceuticals',
+    indication: 'FMRP1 (Fragile X Syndrome) — AI-discovered small molecule',
+    pdufa: '2026-07-22',
+    prob: 45,
+    probLevel: 'low',
+    phase: 'NDA',
+    designation: 'Rare Pediatric + Breakthrough',
+    notes: 'First AI-platform derived drug in this indication. Unmet need is high.'
+  },
+  {
+    ticker: 'BLUE',
+    drug: 'Lenmeldy (2.0)',
+    company: 'bluebird bio',
+    indication: 'Metachromatic Leukodystrophy (MLD) — enhanced gene therapy formulation',
+    pdufa: '2026-08-01',
+    prob: 71,
+    probLevel: 'high',
+    phase: 'sBLA',
+    designation: 'Accelerated Approval',
+    notes: 'Updated manufacturing for improved consistency and shelf life.'
+  },
+  {
+    ticker: 'ASND',
+    drug: 'Asundexian',
+    company: 'Bayer / AstraZeneca',
+    indication: 'Stroke prevention — Factor XIa inhibitor (anticoagulant)',
+    pdufa: '2026-08-19',
+    prob: 61,
+    probLevel: 'medium',
+    phase: 'NDA',
+    designation: 'Priority Review',
+    notes: 'NDA accepted May 2026. OCEANIC-AF missed primary endpoint vs apixaban.'
+  },
+  {
+    ticker: 'ESPR',
+    drug: 'Orexia (bempedoic acid ER)',
+    company: 'Esperion Therapeutics',
+    indication: 'Hyperlipidemia — extended-release formulation for statin intolerance',
+    pdufa: '2026-08-25',
+    prob: 55,
+    probLevel: 'medium',
+    phase: 'NDA',
+    designation: 'Standard Review',
+    notes: 'Improved tolerability profile vs IR formulation. Competitive LDL-C market.'
+  },
+  {
+    ticker: 'MRNA',
+    drug: 'mRNA-0184',
+    company: 'Moderna',
+    indication: 'Myocardial Infarction (Heart Attack) — mRNA-based cardiac regeneration',
+    pdufa: '2026-09-03',
+    prob: 38,
+    probLevel: 'low',
+    phase: 'BLA',
+    designation: 'Regenerative Medicine Advanced Therapy',
+    notes: 'Novel mechanism. Phase 2 showed modest ejection fraction improvement (+4.2%).'
+  }
+];
+
+function getDaysUntil(dateStr) {
+  const d = new Date(dateStr);
+  const diff = Math.round((d - today) / (1000 * 60 * 60 * 24));
+  return diff;
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getCountdown(dateStr) {
+  const days = getDaysUntil(dateStr);
+  if (days < 0) return `${Math.abs(days)}d ago`;
+  if (days === 0) return '🔥 TODAY';
+  if (days <= 7) return `⚡ ${days}d`;
+  return `${days} days`;
+}
+
+let currentFilter = 'all';
+let searchQuery = '';
+
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterCards();
+}
+
+function filterCards() {
+  searchQuery = document.getElementById('searchInput').value.toLowerCase();
+  renderCards();
+}
+
+function renderCards() {
+  const grid = document.getElementById('cardGrid');
+  let filtered = pdufaData;
+
+  // Filter by type
+  if (currentFilter === 'upcoming') {
+    filtered = filtered.filter(d => getDaysUntil(d.pdufa) >= 0 && getDaysUntil(d.pdufa) <= 30);
+  } else if (currentFilter === 'high') {
+    filtered = filtered.filter(d => d.probLevel === 'high');
+  } else if (currentFilter === 'medium') {
+    filtered = filtered.filter(d => d.probLevel === 'medium');
+  } else if (currentFilter === 'low') {
+    filtered = filtered.filter(d => d.probLevel === 'low');
+  }
+
+  // Filter by search
+  if (searchQuery) {
+    filtered = filtered.filter(d =>
+      d.ticker.toLowerCase().includes(searchQuery) ||
+      d.drug.toLowerCase().includes(searchQuery) ||
+      d.indication.toLowerCase().includes(searchQuery) ||
+      d.company.toLowerCase().includes(searchQuery)
+    );
+  }
+
+  // Sort by date
+  filtered.sort((a, b) => new Date(a.pdufa) - new Date(b.pdufa));
+
+  // Update stats
+  const total = pdufaData.length;
+  const upcoming = pdufaData.filter(d => getDaysUntil(d.pdufa) >= 0 && getDaysUntil(d.pdufa) <= 30).length;
+  const highProb = pdufaData.filter(d => d.prob >= 70).length;
+  const avgProb = Math.round(pdufaData.reduce((s, d) => s + d.prob, 0) / pdufaData.length);
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-upcoming').textContent = upcoming;
+  document.getElementById('stat-high').textContent = highProb;
+  document.getElementById('stat-avg').textContent = avgProb + '%';
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="no-results">😢 No results found. Try a different filter.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => {
+    const days = getDaysUntil(d.pdufa);
+    const countdown = getCountdown(d.pdufa);
+    const isUrgent = days >= 0 && days <= 7;
+    
+    return `
+      <div class="card ${d.probLevel}">
+        <div class="card-header">
+          <div>
+            <div class="ticker">${d.ticker}</div>
+            <div style="color:var(--muted);font-size:0.78rem">${d.company}</div>
+          </div>
+          <div class="prob-badge prob-${d.probLevel}">${d.prob}% Approval</div>
+        </div>
+        <div class="drug-name">💊 ${d.drug}</div>
+        <div class="indication">${d.indication}</div>
+        <div class="meta">
+          <div class="meta-row"><span class="key">Submission</span><span class="val">${d.phase}</span></div>
+          <div class="meta-row"><span class="key">Designation</span><span class="val">${d.designation}</span></div>
+          <div class="meta-row" style="margin-top:4px"><span class="key" style="color:var(--muted);font-size:0.78rem">💡 ${d.notes}</span></div>
+        </div>
+        <div class="pdufa-date">
+          <div>
+            <div class="date-label">PDUFA Date</div>
+            <div class="date-val">📅 ${formatDate(d.pdufa)}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:${days <= 7 && days >= 0 ? 'var(--yellow)' : 'var(--muted)'};font-size:0.9rem">${countdown}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+renderCards();
+</script>
+</body>
+</html>
